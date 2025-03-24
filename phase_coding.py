@@ -1,26 +1,28 @@
 """
-Module for Phase Coding implementation.
+Module for Phase Coding with repeated cycles over the entire simulation duration.
 
-This module implements the phase coding scheme as described in:
+This module implements a "repeated" phase coding scheme described in:
 "Neural Coding in Spiking Neural Networks: A Comparative Study for Robust Neuromorphic Systems" by Guo et al.
-and as proposed by Kim et al. (2018c).
+and inspired by Kim et al. (2018c).
 
-Phase Coding Overview:
-----------------------
-1. Each input pixel (0–255) is converted into its 8-bit binary representation.
-2. Each bit in the binary representation corresponds to one phase (total of 8 phases).
-   A bit of "1" indicates that a spike occurs in that phase.
-3. The spike weight changes with time (phase) periodically. The weight for a spike at phase t is given by:
+Phase Coding (Repeated Cycles) Overview:
+----------------------------------------
+1. Each input pixel (0–255) is converted into its 8-bit binary representation (MSB first).
+2. Each bit in the binary representation indicates whether the pixel spikes in that phase (bit==1).
+3. Instead of producing only 8 time steps, we REPEAT these 8 phases across the entire simulation window.
+   - For a total simulation of duration T, with time step dt, we have num_steps = T/dt steps.
+   - At each time step t, we compute phase_idx = t % 8.
+   - If the pixel’s bit in phase_idx is '1', then we produce a spike at time step t.
+4. This yields a dense raster over T steps, where the 8-phase pattern repeats.
+5. The spike weight changes with time (phase) periodically according to:
        w_s(t) = 2^-[1 + mod(t-1, 8)]
-   For a single 8-phase cycle, this yields weights:
-       [2^-1, 2^-2, ..., 2^-8] (i.e., 0.5, 0.25, 0.125, …, ~0.0039)
-4. During decoding, these weighted spikes are summed (along with synaptic weights) to compute the post-synaptic potential.
+   but typically used in the decoding phase.
 
-Usage:
+Usage Example:
     from phase_coding import PhaseCoding
-    coder = PhaseCoding()
+    coder = PhaseCoding(num_phases=8, dt=0.001, duration=0.1)
     spike_train = coder.encode(image)
-    phase_weights = coder.get_phase_weights()
+    weights = coder.get_phase_weights()
 """
 
 import numpy as np
@@ -29,92 +31,101 @@ import matplotlib.pyplot as plt
 
 class PhaseCoding:
     """
-    Implements phase coding for a 2D image.
+    Implements a repeated-cycle phase coding for a 2D image.
 
-    Each pixel is converted into its 8-bit binary representation. Each bit (phase) is
-    interpreted as a spike (True if bit==1, else False). A helper function provides
-    the weights for each phase according to:
-         w_s(t) = 2^-[1 + mod(t-1, 8)]
+    Each pixel is converted into its 8-bit binary representation (MSB first).
+    The 8-phase pattern is then repeated across the entire simulation duration,
+    resulting in a spike train of shape (height, width, num_steps).
     """
 
-    def __init__(self, num_phases=8):
+    def __init__(self, num_phases=8, dt=0.001, duration=0.1):
         """
-        Initialize PhaseCoding.
+        Initialize the PhaseCoding instance.
 
         Parameters:
-            num_phases (int): Number of phases to use (default 8, corresponding to 8-bit representation).
+            num_phases (int): Number of phases to use (8 for 8-bit).
+            dt (float): Simulation time step in seconds (default 1 ms).
+            duration (float): Total simulation time in seconds (default 0.1 => 100 ms).
         """
         self.num_phases = num_phases
+        self.dt = dt
+        self.duration = duration
+        # total time steps across the entire simulation
+        self.num_steps = int(round(duration / dt))
 
     def encode(self, image):
         """
-        Encode an input image into a phase-coded spike train.
+        Encode an input image into a repeated-phase spike train over the entire duration.
 
-        The input image is expected to be a 2D NumPy array with pixel values in the range [0, 255].
-        Each pixel is converted into its 8-bit binary representation (most significant bit first).
-
-        Parameters:
-            image (numpy.ndarray): 2D array representing the input image.
+        The input image is a 2D NumPy array with pixel values in [0, 255].
+        For each pixel:
+          1) Convert to 8-bit binary (MSB first).
+          2) For each time step t in [0..num_steps-1], compute phase_idx = t % 8.
+             If the bit at phase_idx is '1', produce a spike at time step t.
 
         Returns:
-            numpy.ndarray: A boolean 3D array of shape (height, width, num_phases), where True indicates a spike.
+            numpy.ndarray: Boolean 3D array of shape (height, width, num_steps).
         """
-        # Ensure image is a NumPy array of type uint8
+        # Ensure image is uint8
         image = image.astype(np.uint8)
         height, width = image.shape
 
-        # Prepare an output spike train: shape (height, width, num_phases)
-        spike_train = np.zeros((height, width, self.num_phases), dtype=bool)
+        # Prepare output: shape (height, width, num_steps)
+        spike_train = np.zeros((height, width, self.num_steps), dtype=bool)
 
-        # For each pixel, convert to an 8-bit binary string and then to a boolean array
-        # We use format(pixel, '08b') to get an 8-character string with leading zeros.
+        # For each pixel, get its 8-bit binary representation
         for i in range(height):
             for j in range(width):
-                # Convert pixel value to 8-bit binary string (MSB first)
-                binary_str = format(image[i, j], "08b")
-                # Convert each character ('0' or '1') to boolean (1 -> True, 0 -> False)
+                binary_str = format(image[i, j], "08b")  # MSB first
                 bits = np.array([char == "1" for char in binary_str], dtype=bool)
-                spike_train[i, j, :] = bits
+                # Repeated-phase approach
+                for t in range(self.num_steps):
+                    phase_idx = t % self.num_phases
+                    if bits[phase_idx]:
+                        spike_train[i, j, t] = True
 
         return spike_train
 
     def get_phase_weights(self):
         """
-        Compute the weights for each phase according to:
-            w_s(t) = 2^-[1 + mod(t-1, num_phases)]
-        For a single cycle with t = 1, 2, ..., num_phases, this simplifies to:
-            weights = [2^-1, 2^-2, ..., 2^-(num_phases)]
+        Compute the weights for each phase in a single cycle:
+            w_s(t) = 2^-[1 + mod(t-1, 8)].
+        Typically repeated across the entire duration if needed for decoding.
+
+        For phases 1..8, yields [2^-1, 2^-2, ..., 2^-8].
 
         Returns:
-            numpy.ndarray: A 1D array of phase weights.
+            numpy.ndarray: 1D array of length num_phases with the phase weights.
         """
-        # For phases 1 to num_phases, compute 2^-(phase)
         weights = np.array([2 ** (-(phase)) for phase in range(1, self.num_phases + 1)])
         return weights
 
 
 # Example usage / quick test
 if __name__ == "__main__":
-    # Create a dummy image (e.g., 28x28) with random values between 0 and 255
+    # Create a dummy image (28x28) with random values in [0, 255]
     dummy_image = np.random.randint(0, 256, (28, 28), dtype=np.uint8)
 
-    # Initialize the PhaseCoding instance
-    coder = PhaseCoding()
+    # Initialize PhaseCoding with 8 phases, dt=1 ms, total duration=100 ms
+    coder = PhaseCoding(num_phases=8, dt=0.001, duration=0.1)
 
-    # Encode the dummy image into a spike train
+    # Encode the dummy image
     spike_train = coder.encode(dummy_image)
+
+    # Print shape => (28, 28, 100)
+    print("Spike train shape:", spike_train.shape)
 
     # Retrieve phase weights
     phase_weights = coder.get_phase_weights()
     print("Phase weights:", phase_weights)
 
-    # For demonstration, visualize the spike train for a single pixel (e.g., at row 14, column 14)
-    pixel_row, pixel_col = 14, 14
-    pixel_spikes = spike_train[pixel_row, pixel_col, :].astype(int)
+    # Visualize the spike train for a single pixel
+    row, col = 14, 14
+    pixel_spikes = spike_train[row, col, :].astype(int)
 
     plt.figure()
-    plt.stem(np.arange(1, coder.num_phases + 1), pixel_spikes, basefmt=" ")
-    plt.xlabel("Phase")
+    plt.stem(np.arange(len(pixel_spikes)), pixel_spikes, basefmt=" ")
+    plt.xlabel("Time step")
     plt.ylabel("Spike (1: spike, 0: no spike)")
-    plt.title(f"Phase-Coded Spike Pattern for Pixel ({pixel_row}, {pixel_col})")
+    plt.title(f"Repeated-Phase Spike Train for Pixel ({row}, {col})")
     plt.show()

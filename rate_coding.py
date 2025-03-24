@@ -104,8 +104,8 @@ if __name__ == "__main__":
     # Create a dummy image (e.g., 28x28) with random pixel intensities between 0 and 255
     dummy_image = np.random.randint(0, 256, (28, 28), dtype=np.uint8)
 
-    # Initialize the RateCoding instance with default parameters:
-    coder = RateCoding(scaling_factor=4, dt=0.001, duration=0.1)
+    # Initialize the RateCoding instance with updated dt=0.0005 for finer detail:
+    coder = RateCoding(scaling_factor=4, dt=0.0005, duration=0.1)
 
     # Encode the dummy image into a spike train
     spike_train = coder.encode(dummy_image)
@@ -115,9 +115,7 @@ if __name__ == "__main__":
     spike_train_pixel = spike_train[pixel_row, pixel_col, :]
 
     plt.figure()
-    plt.stem(
-        np.arange(len(spike_train_pixel)), spike_train_pixel.astype(int)
-    )  # Removed use_line_collection
+    plt.stem(np.arange(len(spike_train_pixel)), spike_train_pixel.astype(int))
     plt.xlabel("Time step")
     plt.ylabel("Spike (1: spike, 0: no spike)")
     plt.title(f"Poisson Spike Train for Pixel ({pixel_row}, {pixel_col})")

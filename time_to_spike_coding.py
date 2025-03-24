@@ -33,11 +33,12 @@ class TTFSCoding:
         dt (float): Time step in seconds (e.g., 0.001 for 1 ms).
         duration (float): Total simulation time in seconds.
         tau_th (float): Time constant in seconds for exponential threshold decay.
+        tau_s (float): Optional spike weighting time constant (e.g., 0.015 for 15 ms).
         theta0 (float): Initial threshold constant (often set to 1.0).
         num_steps (int): Number of discrete time steps = round(duration / dt).
     """
 
-    def __init__(self, dt=0.001, duration=0.02, tau_th=0.006, theta0=1.0):
+    def __init__(self, dt=0.001, duration=0.02, tau_th=0.006, theta0=1.0, tau_s=0.015):
         """
         Initialize TTFSCoding with user-defined parameters.
 
@@ -46,11 +47,13 @@ class TTFSCoding:
             duration (float): Total duration of the encoding in seconds.
             tau_th (float): Threshold decay time constant (in seconds).
             theta0 (float): Initial threshold constant.
+            tau_s (float): Spike weighting time constant (in seconds) for reference if needed.
         """
         self.dt = dt
         self.duration = duration
         self.tau_th = tau_th
         self.theta0 = theta0
+        self.tau_s = tau_s  # stored if needed for spike weighting
         self.num_steps = int(np.round(duration / dt))
 
     def encode(self, image):
@@ -100,7 +103,7 @@ if __name__ == "__main__":
 
     # Initialize TTFS coder with example parameters
     # (Try adjusting dt, duration, tau_th, etc. to see the effect.)
-    coder = TTFSCoding(dt=0.001, duration=0.02, tau_th=0.006, theta0=1.0)
+    coder = TTFSCoding(dt=0.001, duration=0.02, tau_th=0.006, theta0=1.0, tau_s=0.015)
 
     # Encode the dummy image
     spike_train = coder.encode(dummy_image)

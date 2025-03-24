@@ -21,7 +21,7 @@ Burst Coding Overview:
 
 Usage:
     from burst_coding import BurstCoding
-    coder = BurstCoding(dt=0.001, duration=0.1, Nmax=5, Tmin=0.002, Tmax=0.1)
+    coder = BurstCoding(dt=0.001, duration=0.01, Nmax=5, Tmin=0.002, Tmax=0.01)
     spike_train = coder.encode(image)
 """
 
@@ -42,7 +42,7 @@ class BurstCoding:
         num_steps (int): Number of discrete simulation time steps = round(duration / dt).
     """
 
-    def __init__(self, dt=0.001, duration=0.1, Nmax=5, Tmin=0.002, Tmax=0.1):
+    def __init__(self, dt=0.001, duration=0.01, Nmax=5, Tmin=0.002, Tmax=0.01):
         """
         Initialize BurstCoding with given parameters.
 
@@ -96,7 +96,7 @@ class BurstCoding:
                     ISI = (self.Tmax - self.Tmin) * (1 - P) + self.Tmin
                 else:
                     ISI = self.Tmax
-                # Generate spikes at times t = i * ISI for i = 0,..., Ns-1
+                # Generate spikes at times t = k * ISI for k = 0,..., Ns-1
                 for k in range(Ns):
                     spike_time = k * ISI
                     if spike_time < self.duration:
@@ -111,8 +111,8 @@ if __name__ == "__main__":
     # Create a dummy image (e.g., 28x28) with random pixel values between 0 and 255
     dummy_image = np.random.randint(0, 256, (28, 28), dtype=np.uint8)
 
-    # Initialize BurstCoding with default parameters
-    coder = BurstCoding(dt=0.001, duration=0.1, Nmax=5, Tmin=0.002, Tmax=0.1)
+    # Initialize BurstCoding with Tmax=10ms, Tmin=2ms, Nmax=5
+    coder = BurstCoding(dt=0.001, duration=0.01, Nmax=5, Tmin=0.002, Tmax=0.01)
 
     # Encode the dummy image into a burst spike train
     spike_train = coder.encode(dummy_image)
