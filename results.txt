@@ -1,0 +1,55 @@
+[Rate] Example digit '5':
+  Measured total spikes in 100 ms = 709
+  Paper reference total spikes    = 689
+  Difference (measured - paper)   = 20
+
+  (Paper does not specify a latest spike time for Rate.)
+
+  Peak avg spike count (training set) = 4.93 at 89.25 ms
+  Total spikes (training set)         = 39102805
+  Avg spikes per image (training set) = 651.71
+
+----------------------------------------------------------------
+
+[TTFS] Example digit '5':
+  Measured total spikes in 100 ms = 166
+  Paper reference total spikes    = 166
+  Difference (measured - paper)   = 0
+
+  Measured latest spike time      = 34.00 ms
+  Paper reference latest spike    = 20.0 ms
+  Difference (measured - paper)   = 14.00 ms
+
+  Peak avg spike count (training set) = 74.48 at 1.00 ms
+  Total spikes (training set)         = 8994156
+  Avg spikes per image (training set) = 149.90
+
+----------------------------------------------------------------
+
+[Phase] Example digit '5':
+  Measured total spikes in 100 ms = 10189
+  Paper reference total spikes    = 20325
+  Difference (measured - paper)   = -10136
+
+  (Paper does not specify a latest spike time for Phase.)
+
+  Peak avg spike count (training set) = 103.69 at 0.00 ms
+  Total spikes (training set)         = 569568733
+  Avg spikes per image (training set) = 9492.81
+
+----------------------------------------------------------------
+
+[Burst] Example digit '5':
+  Measured total spikes in 100 ms = 598
+  Paper reference total spikes    = 598
+  Difference (measured - paper)   = 0
+
+  Measured latest spike time      = 16.00 ms
+  Paper reference latest spike    = 20.0 ms
+  Difference (measured - paper)   = -4.00 ms
+
+  Peak avg spike count (training set) = 149.90 at 0.00 ms
+  Total spikes (training set)         = 33649885
+  Avg spikes per image (training set) = 560.83
+
+----------------------------------------------------------------
