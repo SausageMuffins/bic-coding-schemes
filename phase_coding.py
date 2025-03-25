@@ -1,32 +1,6 @@
-"""
-Module for Phase Coding with repeated cycles over the entire simulation duration.
-
-This module implements a "repeated" phase coding scheme described in:
-"Neural Coding in Spiking Neural Networks: A Comparative Study for Robust Neuromorphic Systems" by Guo et al.
-and inspired by Kim et al. (2018c).
-
-Phase Coding (Repeated Cycles) Overview:
-----------------------------------------
-1. Each input pixel (0–255) is converted into its 8-bit binary representation (MSB first).
-2. Each bit in the binary representation indicates whether the pixel spikes in that phase (bit==1).
-3. Instead of producing only 8 time steps, we REPEAT these 8 phases across the entire simulation window.
-   - For a total simulation of duration T, with time step dt, we have num_steps = T/dt steps.
-   - At each time step t, we compute phase_idx = t % 8.
-   - If the pixel’s bit in phase_idx is '1', then we produce a spike at time step t.
-4. This yields a dense raster over T steps, where the 8-phase pattern repeats.
-5. The spike weight changes with time (phase) periodically according to:
-       w_s(t) = 2^-[1 + mod(t-1, 8)]
-   but typically used in the decoding phase.
-
-Usage Example:
-    from phase_coding import PhaseCoding
-    coder = PhaseCoding(num_phases=8, dt=0.001, duration=0.1)
-    spike_train = coder.encode(image)
-    weights = coder.get_phase_weights()
-"""
-
 import numpy as np
 import matplotlib.pyplot as plt
+from tensorflow.keras.datasets import mnist
 
 
 class PhaseCoding:
@@ -43,14 +17,13 @@ class PhaseCoding:
         Initialize the PhaseCoding instance.
 
         Parameters:
-            num_phases (int): Number of phases to use (8 for 8-bit).
+            num_phases (int): Number of phases to use (default 8).
             dt (float): Simulation time step in seconds (default 1 ms).
             duration (float): Total simulation time in seconds (default 0.1 => 100 ms).
         """
         self.num_phases = num_phases
         self.dt = dt
         self.duration = duration
-        # total time steps across the entire simulation
         self.num_steps = int(round(duration / dt))
 
     def encode(self, image):
@@ -60,39 +33,29 @@ class PhaseCoding:
         The input image is a 2D NumPy array with pixel values in [0, 255].
         For each pixel:
           1) Convert to 8-bit binary (MSB first).
-          2) For each time step t in [0..num_steps-1], compute phase_idx = t % 8.
+          2) For each time step t, compute phase_idx = t % num_phases.
              If the bit at phase_idx is '1', produce a spike at time step t.
 
         Returns:
             numpy.ndarray: Boolean 3D array of shape (height, width, num_steps).
         """
-        # Ensure image is uint8
         image = image.astype(np.uint8)
         height, width = image.shape
-
-        # Prepare output: shape (height, width, num_steps)
         spike_train = np.zeros((height, width, self.num_steps), dtype=bool)
-
-        # For each pixel, get its 8-bit binary representation
         for i in range(height):
             for j in range(width):
-                binary_str = format(image[i, j], "08b")  # MSB first
+                binary_str = format(image[i, j], "08b")  # 8-bit binary, MSB first
                 bits = np.array([char == "1" for char in binary_str], dtype=bool)
-                # Repeated-phase approach
                 for t in range(self.num_steps):
                     phase_idx = t % self.num_phases
                     if bits[phase_idx]:
                         spike_train[i, j, t] = True
-
         return spike_train
 
     def get_phase_weights(self):
         """
         Compute the weights for each phase in a single cycle:
-            w_s(t) = 2^-[1 + mod(t-1, 8)].
-        Typically repeated across the entire duration if needed for decoding.
-
-        For phases 1..8, yields [2^-1, 2^-2, ..., 2^-8].
+            w_s(t) = 2^(-phase) for phases 1..8.
 
         Returns:
             numpy.ndarray: 1D array of length num_phases with the phase weights.
@@ -101,31 +64,63 @@ class PhaseCoding:
         return weights
 
 
-# Example usage / quick test
+# ------------------- Main Script -------------------
 if __name__ == "__main__":
-    # Create a dummy image (28x28) with random values in [0, 255]
-    dummy_image = np.random.randint(0, 256, (28, 28), dtype=np.uint8)
+    # Load MNIST dataset
+    (x_train, y_train), (_, _) = mnist.load_data()
+    print("Loaded MNIST training set:", x_train.shape)
 
-    # Initialize PhaseCoding with 8 phases, dt=1 ms, total duration=100 ms
-    coder = PhaseCoding(num_phases=8, dt=0.001, duration=0.1)
+    # Choose four digits: 0, 5, 7, and 9.
+    target_digits = [0, 5, 7, 9]
+    selected_images = []
+    for d in target_digits:
+        indices = np.where(y_train == d)[0]
+        if len(indices) > 0:
+            selected_images.append(x_train[indices[0]])
+        else:
+            print(f"Digit {d} not found in training set.")
 
-    # Encode the dummy image
-    spike_train = coder.encode(dummy_image)
+    # Initialize PhaseCoding
+    phase_coder = PhaseCoding(num_phases=8, dt=0.001, duration=0.1)
 
-    # Print shape => (28, 28, 100)
-    print("Spike train shape:", spike_train.shape)
+    # Prepare figure with 2 rows and 4 columns
+    fig, axs = plt.subplots(2, len(target_digits), figsize=(16, 8))
 
-    # Retrieve phase weights
-    phase_weights = coder.get_phase_weights()
-    print("Phase weights:", phase_weights)
+    # Time axis in ms (same for all, since dt and duration are fixed)
+    T = phase_coder.num_steps
+    time_axis = np.linspace(0, phase_coder.duration, T, endpoint=True) * 1000  # in ms
 
-    # Visualize the spike train for a single pixel
-    row, col = 14, 14
-    pixel_spikes = spike_train[row, col, :].astype(int)
+    # Loop over each selected digit and plot its raster and average spike count
+    for idx, image in enumerate(selected_images):
+        # Encode the image with phase coding
+        spike_train = phase_coder.encode(image)
+        H, W, _ = spike_train.shape
+        # Raster plot: Flatten the spike train.
+        neuron_ids = []
+        spike_times = []
+        for i in range(H):
+            for j in range(W):
+                spike_indices = np.where(spike_train[i, j, :])[0]
+                if spike_indices.size > 0:
+                    # Each pixel is treated as a separate neuron.
+                    neuron_index = i * W + j
+                    spike_times.extend(time_axis[spike_indices])
+                    neuron_ids.extend([neuron_index] * len(spike_indices))
 
-    plt.figure()
-    plt.stem(np.arange(len(pixel_spikes)), pixel_spikes, basefmt=" ")
-    plt.xlabel("Time step")
-    plt.ylabel("Spike (1: spike, 0: no spike)")
-    plt.title(f"Repeated-Phase Spike Train for Pixel ({row}, {col})")
+        axs[0, idx].scatter(spike_times, neuron_ids, s=1, color="black")
+        axs[0, idx].set_title(f"Raster Plot for Digit {target_digits[idx]}")
+        axs[0, idx].set_xlabel("Time (ms)")
+        axs[0, idx].set_ylabel("Input neuron index")
+        axs[0, idx].set_xlim(0, phase_coder.duration * 1000)
+
+        # Compute average spike counts vs. time for this image.
+        # For each time step, average over all pixels.
+        avg_spikes = spike_train.sum(axis=(0, 1)) / (H * W)
+        axs[1, idx].plot(time_axis, avg_spikes, color="blue")
+        axs[1, idx].set_title(f"Avg Spike Count vs Time for Digit {target_digits[idx]}")
+        axs[1, idx].set_xlabel("Time (ms)")
+        axs[1, idx].set_ylabel("Avg spike count per pixel")
+        axs[1, idx].set_xlim(0, phase_coder.duration * 1000)
+
+    plt.tight_layout()
     plt.show()
