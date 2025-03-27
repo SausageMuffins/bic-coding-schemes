@@ -1,8 +1,5 @@
 """
-Module for Time-to-First-Spike (TTFS) Coding.
-
-This module implements the TTFS coding scheme described in:
-"Neural Coding in Spiking Neural Networks: A Comparative Study for Robust Neuromorphic Systems" by Guo et al.
+This script implements the TTFS coding scheme described in "Neural Coding in Spiking Neural Networks: A Comparative Study for Robust Neuromorphic Systems" by Guo et al.
 
 Time-to-First-Spike (TTFS) Coding:
 ----------------------------------

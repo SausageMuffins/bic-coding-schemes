@@ -1,3 +1,29 @@
+"""
+This script implements the rate coding scheme described in "Neural Coding in Spiking Neural Networks: A Comparative Study for Robust Neuromorphic Systems" by Guo et al. The rate coding scheme converts each input pixel into a  poisson spike train.
+
+Rate Coding:
+---------------------
+1. Each pixel intensity is converted to a firing rate (e.g., in spikes/second).
+   - A scaling factor λ (lambda) defines how we map pixel value to a firing rate:
+       firing_rate = pixel_intensity / λ.
+2. The simulation runs for a set duration, discretized into time steps of length dt.
+3. At each time step, we sample from a Bernoulli distribution for each pixel:
+   - Probability of a spike = firing_rate * dt
+   - If the random draw is < spike_prob, we record a spike (True).
+
+Hence, a pixel with a higher intensity has a higher probability of spiking at each time step.
+
+Usage:
+    Import the RateCoding class in your main script:
+        from rate_coding import RateCoding
+
+    Create an instance:
+        coder = RateCoding(scaling_factor=4, dt=0.001, duration=0.1)
+
+    Encode an image:
+        spike_train = coder.encode(image)
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 from tensorflow.keras.datasets import mnist

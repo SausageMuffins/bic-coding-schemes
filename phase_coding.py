@@ -1,3 +1,25 @@
+"""
+This script implements the phase coding scheme described in "Neural Coding in Spiking Neural Networks: A Comparative Study for Robust Neuromorphic Systems" by Guo et al.
+
+Phase Coding:
+----------------------
+1. Each pixel is first converted to its 8-bit binary representation (MSB first).
+2. The simulation time is discretized into steps of size dt, over a total duration.
+3. Within one cycle of length `num_phases`, each bit corresponds to one phase index.
+   - If the bit is '1', a spike is generated at each time step where (t % num_phases) equals that bit's position.
+   - If the bit is '0', no spike is generated at that phase.
+4. The same cycle is repeated across the entire simulation duration.
+
+Usage Example:
+    from phase_coding import PhaseCoding
+
+    phase_coder = PhaseCoding(num_phases=8, dt=0.001, duration=0.1)
+    spike_train = phase_coder.encode(image)
+
+    # spike_train has shape (height, width, num_steps)
+    # where each (height, width) location has a boolean spike train over time.
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 from tensorflow.keras.datasets import mnist

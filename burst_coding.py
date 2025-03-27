@@ -1,8 +1,5 @@
 """
-Module for Burst Coding implementation.
-
-This module implements the burst coding scheme described in
-"Neural Coding in Spiking Neural Networks: A Comparative Study for Robust Neuromorphic Systems" by Guo et al.
+This script implements the burst coding scheme described in "Neural Coding in Spiking Neural Networks: A Comparative Study for Robust Neuromorphic Systems" by Guo et al.
 
 Burst Coding Overview:
 -----------------------
