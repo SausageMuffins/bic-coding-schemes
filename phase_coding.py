@@ -2,6 +2,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tensorflow.keras.datasets import mnist
 
+# Set global font properties for large fonts
+plt.rcParams.update(
+    {
+        "font.size": 18,
+        "axes.titlesize": 18,
+        "axes.labelsize": 16,
+        "xtick.labelsize": 16,
+        "ytick.labelsize": 16,
+        "legend.fontsize": 16,
+    }
+)
+
 
 class PhaseCoding:
     """
@@ -84,7 +96,7 @@ if __name__ == "__main__":
     phase_coder = PhaseCoding(num_phases=8, dt=0.001, duration=0.1)
 
     # Prepare figure with 2 rows and 4 columns
-    fig, axs = plt.subplots(2, len(target_digits), figsize=(16, 8))
+    fig, axs = plt.subplots(2, len(target_digits), figsize=(16, 12))
 
     # Time axis in ms (same for all, since dt and duration are fixed)
     T = phase_coder.num_steps
@@ -107,8 +119,8 @@ if __name__ == "__main__":
                     spike_times.extend(time_axis[spike_indices])
                     neuron_ids.extend([neuron_index] * len(spike_indices))
 
-        axs[0, idx].scatter(spike_times, neuron_ids, s=1, color="black")
-        axs[0, idx].set_title(f"Raster Plot for Digit {target_digits[idx]}")
+        axs[0, idx].scatter(spike_times, neuron_ids, s=2, color="black")
+        axs[0, idx].set_title(f"Digit {target_digits[idx]}")
         axs[0, idx].set_xlabel("Time (ms)")
         axs[0, idx].set_ylabel("Input neuron index")
         axs[0, idx].set_xlim(0, phase_coder.duration * 1000)
@@ -117,7 +129,7 @@ if __name__ == "__main__":
         # For each time step, average over all pixels.
         avg_spikes = spike_train.sum(axis=(0, 1)) / (H * W)
         axs[1, idx].plot(time_axis, avg_spikes, color="blue")
-        axs[1, idx].set_title(f"Avg Spike Count vs Time for Digit {target_digits[idx]}")
+        axs[1, idx].set_title(f"Avg Spike Count vs Time (Digit {target_digits[idx]})")
         axs[1, idx].set_xlabel("Time (ms)")
         axs[1, idx].set_ylabel("Avg spike count per pixel")
         axs[1, idx].set_xlim(0, phase_coder.duration * 1000)
