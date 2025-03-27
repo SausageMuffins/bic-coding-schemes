@@ -42,8 +42,7 @@ class PhaseCoding:
     Implements a repeated-cycle phase coding for a 2D image.
 
     Each pixel is converted into its 8-bit binary representation (MSB first).
-    The 8-phase pattern is then repeated across the entire simulation duration,
-    resulting in a spike train of shape (height, width, num_steps).
+    The 8-phase pattern is then repeated across the entire simulation duration, resulting in a spike train of shape (height, width, num_steps).
     """
 
     def __init__(self, num_phases=8, dt=0.001, duration=0.1):
